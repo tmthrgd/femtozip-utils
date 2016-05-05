@@ -59,10 +59,10 @@ func main() {
 	var mpath string
 
 	build := flag.NewFlagSet("build", flag.ExitOnError)
-	build.StringVar(&mpath, "model", "model.dict", "")
+	build.StringVar(&mpath, "model", "session.model", "")
 
 	compress := flag.NewFlagSet("compress", flag.ExitOnError)
-	compress.StringVar(&mpath, "model", "model.dict", "")
+	compress.StringVar(&mpath, "model", "session.model", "")
 
 	if len(os.Args) == 1 {
 		panic("use subcommand build or compress")
