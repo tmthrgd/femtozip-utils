@@ -24,10 +24,10 @@ import (
 	"unsafe"
 )
 
-var docs [][]byte
-
 //export go_get_callback
 func go_get_callback(index C.int, length *C.int, data unsafe.Pointer) *C.char {
+	docs := *(*[][]byte)(data)
+
 	p := bytesToC(docs[index])
 
 	if p == nil {
@@ -147,6 +147,8 @@ func main() {
 		}
 	}
 
+	var docs [][]byte
+
 	scanner := bufio.NewScanner(f)
 
 	for scanner.Scan() {
@@ -170,7 +172,7 @@ func main() {
 		return
 	}
 
-	model := C.fz_build_model(C.int(len(docs)), (*[0]byte)(unsafe.Pointer(C.get_callback)), (*[0]byte)(unsafe.Pointer(C.release_callback)), nil)
+	model := C.fz_build_model(C.int(len(docs)), (*[0]byte)(unsafe.Pointer(C.get_callback)), (*[0]byte)(unsafe.Pointer(C.release_callback)), unsafe.Pointer(&docs))
 
 	if model == nil {
 		panic("fz_build_model failed")
