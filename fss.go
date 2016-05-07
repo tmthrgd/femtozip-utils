@@ -72,8 +72,11 @@ func main() {
 	compress := flag.NewFlagSet("compress", flag.ExitOnError)
 	compress.StringVar(&mpath, "model", "session.model", "")
 
+	decompress := flag.NewFlagSet("decompress", flag.ExitOnError)
+	decompress.StringVar(&mpath, "model", "session.model", "")
+
 	if len(os.Args) == 1 {
-		panic("use subcommand build or compress")
+		panic("use subcommand build, compress or decompress")
 	}
 
 	switch os.Args[1] {
@@ -81,6 +84,8 @@ func main() {
 		build.Parse(os.Args[2:])
 	case "compress":
 		compress.Parse(os.Args[2:])
+	case "decompress":
+		decompress.Parse(os.Args[2:])
 	default:
 		panic("invalid command")
 	}
@@ -90,13 +95,24 @@ func main() {
 	md := C.CString(mpath)
 	defer C.free(unsafe.Pointer(md))
 
+	var b []byte
+	var err error
+
 	if compress.Parsed() {
 		if compress.NArg() != 1 {
 			panic("invalid arguments")
 		}
 
-		b, err := hex.DecodeString(compress.Arg(0))
+		b, err = hex.DecodeString(compress.Arg(0))
+	} else if decompress.Parsed() {
+		if decompress.NArg() != 1 {
+			panic("invalid arguments")
+		}
 
+		b, err = hex.DecodeString(decompress.Arg(0))
+	}
+
+	if compress.Parsed() || decompress.Parsed() {
 		if err != nil {
 			panic(err)
 		}
@@ -118,16 +134,30 @@ func main() {
 		defer C.free(unsafe.Pointer(src))
 
 		var dst []byte
+		var elapsed time.Duration
 
-		start := time.Now()
-		if C.fz_compress_writer(model, src, C.size_t(len(b)), (*[0]byte)(unsafe.Pointer(C.dest_writer)), unsafe.Pointer(&dst)) != C.int(0) {
-			panic("fz_compress_writer failed")
+		if compress.Parsed() {
+			start := time.Now()
+			if C.fz_compress_writer(model, src, C.size_t(len(b)), (*[0]byte)(unsafe.Pointer(C.dest_writer)), unsafe.Pointer(&dst)) != C.int(0) {
+				panic("fz_compress_writer failed")
+			}
+			elapsed = time.Since(start)
+
+			fmt.Printf("compressed %d bytes to %d bytes, %d net bytes\n", len(b), len(dst), len(dst)-len(b))
+			fmt.Printf("\toriginal %s\n", compress.Arg(0))
+			fmt.Printf("\tcompressed %x\n", dst)
+		} else /* decompress.Parsed() */ {
+			start := time.Now()
+			if C.fz_decompress_writer(model, src, C.size_t(len(b)), (*[0]byte)(unsafe.Pointer(C.dest_writer)), unsafe.Pointer(&dst)) != C.int(0) {
+				panic("fz_decompress_writer failed")
+			}
+			elapsed = time.Since(start)
+
+			fmt.Printf("decompressed %d bytes to %d bytes, %d net bytes\n", len(b), len(dst), len(dst)-len(b))
+			fmt.Printf("\tcompressed %s\n", decompress.Arg(0))
+			fmt.Printf("\toriginal %x\n", dst)
 		}
-		elapsed := time.Since(start)
 
-		fmt.Printf("compressed %d bytes to %d bytes, %d net bytes\n", len(b), len(dst), len(dst)-len(b))
-		fmt.Printf("\toriginal %s\n", compress.Arg(0))
-		fmt.Printf("\tcompressed %s\n", hex.EncodeToString(dst))
 		fmt.Println()
 		fmt.Printf("\ttook %s\n", elapsed)
 		return
