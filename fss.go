@@ -9,6 +9,7 @@ package main
 
 const char *get_callback(int doc_index, int *doc_len, void *user_data);
 void release_callback(const char *buf, void *user_data);
+int dest_writer(const char *buf, size_t len, void *arg);
 */
 import "C"
 
@@ -40,6 +41,13 @@ func go_get_callback(index C.int, length *C.int, data unsafe.Pointer) *C.char {
 //export go_release_callback
 func go_release_callback(buf *C.char, data unsafe.Pointer) {
 	C.free(unsafe.Pointer(buf))
+}
+
+//export go_dest_writer
+func go_dest_writer(buf *C.char, len C.size_t, arg unsafe.Pointer) C.int {
+	*(*[]byte)(arg) = append([]byte(nil), (*[1 << 30]byte)(unsafe.Pointer(buf))[:len:len]...)
+
+	return C.int(0)
 }
 
 func bytesToC(data []byte) *C.char {
@@ -109,25 +117,17 @@ func main() {
 
 		defer C.free(unsafe.Pointer(src))
 
-		dst := C.malloc(C.size_t(len(b) * 2))
-
-		if dst == nil {
-			panic("malloc failed")
-		}
-
-		defer C.free(dst)
+		var dst []byte
 
 		start := time.Now()
-		l := int(C.fz_compress(model, src, C.int(len(b)), (*C.char)(dst), C.int(len(b)*2)))
+		if C.fz_compress_writer(model, src, C.size_t(len(b)), (*[0]byte)(unsafe.Pointer(C.dest_writer)), unsafe.Pointer(&dst)) != C.int(0) {
+			panic("fz_compress_writer failed")
+		}
 		elapsed := time.Since(start)
 
-		if l <= 0 {
-			panic("fz_compress failed")
-		}
-
-		fmt.Printf("compressed %d bytes to %d bytes, %d net bytes\n", len(b), l, l-len(b))
+		fmt.Printf("compressed %d bytes to %d bytes, %d net bytes\n", len(b), len(dst), len(dst)-len(b))
 		fmt.Printf("\toriginal %s\n", compress.Arg(0))
-		fmt.Printf("\tcompressed %s\n", hex.EncodeToString((*[1 << 30]byte)(dst)[:l]))
+		fmt.Printf("\tcompressed %s\n", hex.EncodeToString(dst))
 		fmt.Println()
 		fmt.Printf("\ttook %s\n", elapsed)
 		return
