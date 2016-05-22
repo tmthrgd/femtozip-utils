@@ -95,24 +95,24 @@ func main() {
 	md := C.CString(mpath)
 	defer C.free(unsafe.Pointer(md))
 
-	var b []byte
-	var err error
-
-	if compress.Parsed() {
-		if compress.NArg() != 1 {
-			panic("invalid arguments")
-		}
-
-		b, err = hex.DecodeString(compress.Arg(0))
-	} else if decompress.Parsed() {
-		if decompress.NArg() != 1 {
-			panic("invalid arguments")
-		}
-
-		b, err = hex.DecodeString(decompress.Arg(0))
-	}
-
 	if compress.Parsed() || decompress.Parsed() {
+		var b []byte
+		var err error
+
+		if compress.Parsed() {
+			if compress.NArg() != 1 {
+				panic("invalid arguments")
+			}
+
+			b, err = hex.DecodeString(compress.Arg(0))
+		} else if decompress.Parsed() {
+			if decompress.NArg() != 1 {
+				panic("invalid arguments")
+			}
+
+			b, err = hex.DecodeString(decompress.Arg(0))
+		}
+
 		if err != nil {
 			panic(err)
 		}
