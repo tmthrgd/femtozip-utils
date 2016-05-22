@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 	"unsafe"
 )
@@ -182,10 +181,7 @@ func main() {
 	scanner := bufio.NewScanner(f)
 
 	for scanner.Scan() {
-		// 2016/05/04 22:25:13 [info] 15333#15333:
-		s := strings.SplitN(scanner.Text(), " ", 5)
-		h := s[len(s)-1]
-		b, err := hex.DecodeString(h)
+		b, err := hex.DecodeString(scanner.Text())
 
 		if err != nil {
 			panic(err)
